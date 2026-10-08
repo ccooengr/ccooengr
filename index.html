@@ -1,0 +1,116 @@
+from pathlib import Path
+import zipfile
+
+root = Path("/mnt/data/ccooengr_consultorio")
+root.mkdir(exist_ok=True)
+
+index = r'''<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#e30613">
+<link rel="manifest" href="manifest.json">
+<title>Consultorio CCOO Enseñanza Granada</title>
+<style>
+:root{--red:#e30613;--dark:#171717;--muted:#6b6b6b;--bg:#f4f4f4;--card:#fff;--line:#e5e5e5}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--dark);font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
+.header{background:linear-gradient(135deg,#b9000d,#e30613);color:#fff;padding:22px 18px 30px;border-radius:0 0 28px 28px;box-shadow:0 8px 25px #0002}
+.brand{max-width:760px;margin:auto;display:flex;align-items:center;gap:12px}.logo{width:48px;height:48px;border:2px solid #fff;border-radius:50%;display:grid;place-items:center;font-weight:900;font-size:13px}.brand b{font-size:17px}.brand small{display:block;opacity:.9;margin-top:3px}
+main{max-width:760px;margin:auto;padding:18px}.tag{display:inline-block;background:#fff0f1;color:#b4000a;border-radius:999px;padding:6px 10px;font-size:12px;font-weight:800;margin-top:2px}.hero h1{font-size:34px;line-height:1.03;margin:12px 0 8px}.hero p{color:#555;line-height:1.5;margin:0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:18px;margin-top:16px;box-shadow:0 5px 18px #0000000a}.label{font-weight:800;margin-bottom:10px}
+.voice{width:100%;border:0;border-radius:17px;padding:20px;background:var(--dark);color:#fff;font-size:18px;font-weight:800;cursor:pointer}.voice.recording{background:var(--red);animation:pulse 1.2s infinite}@keyframes pulse{50%{box-shadow:0 0 0 8px #e3061320}}
+.status{min-height:21px;margin-top:10px;color:var(--muted);font-size:13px}
+textarea{width:100%;min-height:125px;border:1px solid #d6d6d6;border-radius:14px;padding:14px;font:inherit;resize:vertical}button{font:inherit}.actions{display:flex;gap:10px;margin-top:10px;flex-wrap:wrap}.primary,.secondary{border:0;border-radius:12px;padding:12px 16px;font-weight:800;cursor:pointer}.primary{background:var(--red);color:#fff}.secondary{background:#eee;color:#222}
+.answer{display:none}.answer h2{font-size:18px;margin:0 0 10px}.answer p{line-height:1.55}.source{background:#fafafa;border-left:4px solid var(--red);padding:12px;border-radius:8px;font-size:13px;color:#555}.notice{font-size:12px;line-height:1.5;color:#666}.footer{text-align:center;color:#777;font-size:12px;padding:25px 4px 40px}
+@media(min-width:650px){.hero h1{font-size:40px}}
+</style>
+</head>
+<body>
+<header class="header"><div class="brand"><div class="logo">CCOO</div><div><b>CCOO Enseñanza Granada</b><small>Consultorio para afiliadas y afiliados</small></div></div></header>
+<main>
+<section class="hero"><span class="tag">CONSULTORIO · PRIMERA VERSIÓN</span><h1>Resuelve tus dudas por voz</h1><p>Habla o escribe tu consulta. Esta versión inicial prepara la experiencia para conectar posteriormente la base documental sindical.</p></section>
+
+<section class="card">
+<div class="label">🎙️ Consulta por voz</div>
+<button id="voice" class="voice">🎙️ Pulsa para hablar</button>
+<div id="status" class="status">Puedes usar el reconocimiento de voz si tu navegador lo admite.</div>
+</section>
+
+<section class="card">
+<div class="label">⌨️ O escribe tu consulta</div>
+<textarea id="question" placeholder="Ejemplo: ¿Qué permiso tengo por hospitalización de un familiar?"></textarea>
+<div class="actions"><button id="ask" class="primary">Consultar</button><button id="clear" class="secondary">Limpiar</button></div>
+</section>
+
+<section id="answer" class="card answer">
+<h2>Respuesta orientativa</h2><p id="answerText"></p>
+<div class="source"><b>Fuente:</b> <span id="sourceText"></span></div>
+<div class="actions"><button id="speak" class="primary">🔊 Escuchar respuesta</button><button id="stop" class="secondary">⏹ Detener</button></div>
+</section>
+
+<section class="card"><div class="label">⚠️ Atención sindical</div><p class="notice">Esta primera versión es un prototipo y no sustituye la atención sindical. La versión definitiva se conectará únicamente a documentación validada y derivará al sindicato las consultas que necesiten revisión profesional.</p></section>
+<div class="footer">CCOO Enseñanza Granada</div>
+</main>
+
+<script>
+const q=document.querySelector("#question"),status=document.querySelector("#status"),ans=document.querySelector("#answer"),at=document.querySelector("#answerText"),src=document.querySelector("#sourceText");
+function respond(t){
+ t=t.toLowerCase();let a="Gracias por tu consulta. Esta es la primera versión del consultorio. Todavía no hemos conectado la base documental de CCOO. En la siguiente fase el sistema contrastará tu pregunta con normativa y documentación sindical validada.",s="Base documental sindical: pendiente de conexión.";
+ if(t.includes("permiso")||t.includes("hospital")){a="La versión definitiva analizará el tipo de permiso, la relación familiar y las circunstancias concretas antes de ofrecer una respuesta. No se dará una respuesta automática si falta información relevante.";s="Normativa de permisos y licencias del personal docente: pendiente de incorporación y validación."}
+ if(t.includes("opos")||t.includes("oposición")){a="Las consultas sobre oposiciones deberán contrastarse siempre con la convocatoria vigente y las instrucciones oficiales aplicables.";s="Convocatoria e instrucciones oficiales vigentes: pendiente de incorporación."}
+ at.textContent=a;src.textContent=s;ans.style.display="block";
+}
+document.querySelector("#ask").onclick=()=>{let t=q.value.trim();if(t)respond(t);else q.focus()};
+document.querySelector("#clear").onclick=()=>{q.value="";ans.style.display="none";speechSynthesis.cancel()};
+document.querySelector("#speak").onclick=()=>{speechSynthesis.cancel();speechSynthesis.speak(new SpeechSynthesisUtterance(at.textContent))};
+document.querySelector("#stop").onclick=()=>speechSynthesis.cancel();
+
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;let rec;
+if(SR){
+ rec=new SR();rec.lang="es-ES";rec.interimResults=true;rec.continuous=false;
+ rec.onstart=()=>{document.querySelector("#voice").classList.add("recording");document.querySelector("#voice").textContent="🔴 Escuchando…";status.textContent="Habla ahora. Al terminar, la consulta aparecerá escrita."};
+ rec.onend=()=>{document.querySelector("#voice").classList.remove("recording");document.querySelector("#voice").textContent="🎙️ Pulsa para hablar"};
+ rec.onerror=()=>status.textContent="No se ha podido usar el reconocimiento de voz. Puedes escribir la consulta.";
+ rec.onresult=e=>{let text="";for(let i=e.resultIndex;i<e.results.length;i++)text+=e.results[i][0].transcript;q.value=text;if(e.results[e.results.length-1].isFinal){status.textContent="Consulta capturada. Pulsa «Consultar».";}}
+ document.querySelector("#voice").onclick=()=>{try{rec.start()}catch(e){}};
+}else{
+ document.querySelector("#voice").onclick=()=>status.textContent="Este navegador no ofrece reconocimiento de voz. Puedes escribir la consulta.";
+ status.textContent="Tu navegador no ofrece reconocimiento de voz; puedes escribir la consulta.";
+}
+</script>
+</body>
+</html>'''
+
+manifest = r'''{
+  "name": "Consultorio CCOO Enseñanza Granada",
+  "short_name": "Consultorio CCOO",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f4f4f4",
+  "theme_color": "#e30613",
+  "lang": "es",
+  "description": "Consultorio para afiliadas y afiliados de CCOO Enseñanza Granada."
+}'''
+
+sw = r'''const CACHE="ccoo-consultorio-v1";
+const ASSETS=["./","./index.html","./manifest.json"];
+self.addEventListener("install",e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS))));
+self.addEventListener("fetch",e=>e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request))));
+'''
+
+(root/"index.html").write_text(index,encoding="utf-8")
+(root/"manifest.json").write_text(manifest,encoding="utf-8")
+(root/"sw.js").write_text(sw,encoding="utf-8")
+
+# register service worker before closing body
+idx = index.replace('</script>\n</body>', '</script>\n<script>if("serviceWorker" in navigator){navigator.serviceWorker.register("sw.js").catch(()=>{});}</script>\n</body>')
+(root/"index.html").write_text(idx,encoding="utf-8")
+
+zip_path=Path("/mnt/data/Consultorio_CCOO_Ensenanza_Granada_v1.zip")
+with zipfile.ZipFile(zip_path,"w",zipfile.ZIP_DEFLATED) as z:
+    for p in root.iterdir():
+        z.write(p,p.name)
+
+print(f"Paquete creado: {zip_path}")
+print("Archivos:", ", ".join(p.name for p in root.iterdir()))
