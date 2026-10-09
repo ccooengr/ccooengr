@@ -612,7 +612,7 @@
         console.error("Error en la consulta:", error);
 
         responseText.textContent =
-            "No hemos podido obtener una respuesta. Comprueba la conexión e inténtalo de nuevo. Si el problema continúa, contacta con el equipo sindical.";
+        "Detalle del error: " + error.message;
 
     } finally {
         submitButton.disabled = false;
