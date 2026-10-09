@@ -313,6 +313,10 @@
             }
         }
     </style>
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.6/dist/purify.min.js"></script>    
+
 </head>
 
 <body>
@@ -599,9 +603,13 @@
             );
         }
 
-        responseText.textContent =
-            data.respuesta +
-            (data.aviso ? "\n\n" + data.aviso : "");
+const textoRespuesta =
+    data.respuesta +
+    (data.aviso ? "\n\n" + data.aviso : "");
+
+responseText.innerHTML = DOMPurify.sanitize(
+    marked.parse(textoRespuesta)
+);
 
         response.scrollIntoView({
             behavior: "smooth",
