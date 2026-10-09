@@ -558,31 +558,67 @@
         document.getElementById("responseText");
 
 
-    submitButton.addEventListener("click", function() {
+   submitButton.addEventListener("click", async function() {
+    const userQuestion = question.value.trim();
+    const categoryElement = document.getElementById("category");
 
-        const userQuestion =
-            question.value.trim();
+    const category = categoryElement
+        ? categoryElement.value
+        : "general";
 
-        if (!userQuestion) {
+    if (!userQuestion) {
+        alert("Escribe o dicta primero tu consulta.");
+        return;
+    }
 
-            alert("Escribe o dicta primero tu consulta.");
+    response.classList.add("visible");
+    responseText.textContent = "Consultando al asistente sindical...";
+    submitButton.disabled = true;
+    submitButton.textContent = "CONSULTANDO...";
 
-            return;
+    try {
+        const result = await fetch(
+            "https://consultorio-ccoo-granada.eescriva.workers.dev/api/consultar",
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    question: userQuestion,
+                    category: category
+                })
+            }
+        );
 
+        const data = await result.json();
+
+        if (!result.ok) {
+            throw new Error(
+                data.error || "No se ha podido procesar la consulta."
+            );
         }
 
-
         responseText.textContent =
-            "Gracias por realizar tu consulta. El sistema de inteligencia artificial del Consultorio CCOO Enseñanza Granada todavía no está conectado a la base documental sindical. En la versión definitiva, esta consulta será analizada utilizando normativa y documentación actualizada para ofrecer una respuesta fundamentada.";
-
-        response.classList.add("visible");
+            data.respuesta +
+            (data.aviso ? "\n\n" + data.aviso : "");
 
         response.scrollIntoView({
             behavior: "smooth",
             block: "center"
         });
 
-    });
+    } catch (error) {
+        console.error("Error en la consulta:", error);
+
+        responseText.textContent =
+            "No hemos podido obtener una respuesta. Comprueba la conexión e inténtalo de nuevo. Si el problema continúa, contacta con el equipo sindical.";
+
+    } finally {
+        submitButton.disabled = false;
+        submitButton.textContent = "CONSULTAR";
+    }
+});
 
 
     /* ==========================
